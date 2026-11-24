@@ -26,7 +26,7 @@ Le widget suit le journal du jeu : section → catégorie → genre → quête. 
 - les quêtes d'événements saisonniers, qui ne sont disponibles que pendant l'événement ;
 - les quêtes retirées du jeu, sauf si le personnage les a faites ;
 - les quêtes d'une autre cité de départ, et celles prévues pour ceux qui prennent plus tard la classe de départ du personnage ;
-- les quêtes exclusives quand l'autre choix a été fait (par exemple « Call of the Wild » d'une autre Grande Compagnie), d'après les verrous définis dans les données du jeu ;
+- les quêtes exclusives quand l'autre choix a été fait (par exemple « Call of the Wild » d'une autre Grande Compagnie), d'après les verrous définis dans les données du jeu, ainsi que leurs suites (par exemple la suite de l'enrôlement dans une autre Grande Compagnie) ;
 - les quêtes d'une autre Grande Compagnie que la sienne, ou de toutes les Grandes Compagnies tant que le personnage n'en a rejoint aucune ;
 - les ordres de mission.
 

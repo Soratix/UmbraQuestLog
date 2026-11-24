@@ -26,7 +26,7 @@ The widget follows the game's journal: section → category → genre → quest.
 - seasonal event quests, only available during the event;
 - quests removed from the game, unless the character completed them;
 - quests for another starting city, and the ones meant for players who pick up the character's starting class later;
-- mutually exclusive quests once the other choice was made (for example another Grand Company's "Call of the Wild"), based on the locks defined in the game data;
+- mutually exclusive quests once the other choice was made (for example another Grand Company's "Call of the Wild"), based on the locks defined in the game data, along with the quests that follow them (for example the follow-up to enlisting in another Grand Company);
 - quests for a Grand Company other than yours, or for every Grand Company until the character joins one;
 - levequests.
 

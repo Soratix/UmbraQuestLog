@@ -21,7 +21,6 @@ public sealed record QuestEntry(
     ushort   SortKey,
     uint     Expansion,
     uint     GrandCompany,
-    uint[]   Locks,
     StartCity StartCity,
     bool     Retired,
     uint     IssuerNpcId,
@@ -34,6 +33,12 @@ public sealed record QuestEntry(
 {
     public bool HasLocation => TerritoryId != 0 && MapId != 0;
 }
+
+/// <summary>Verrous et prérequis d'une quête (feuille Quest).</summary>
+/// <param name="Locks">QuestLock : la quête devient impossible dès que l'une de celles-ci est faite.</param>
+/// <param name="Previous">PreviousQuest : quêtes à faire avant.</param>
+/// <param name="AnyPrevious">PreviousQuestJoin = 2 : une seule suffit (sinon toutes sont requises).</param>
+public sealed record QuestRequirement(uint[] Locks, uint[] Previous, bool AnyPrevious);
 
 /// <summary>Catégorie du journal (JournalCategory) : « Quêtes annexes de Gyr Abania », « Quêtes de rôle »…</summary>
 public sealed class QuestCategory(uint id, string name, QuestSection section)
@@ -96,6 +101,13 @@ public sealed class QuestCatalog
     /// <summary>Quêtes du scénario principal, par extension (une seule faite suffit à prouver qu'on l'a atteinte).</summary>
     public Dictionary<uint, List<uint>> MainScenarioByExpansion { get; } = [];
 
+    /// <summary>
+    /// Toutes les quêtes du jeu (journal ou non) qui ont un verrou ou un prérequis :
+    /// QuestLock (verrouillée si l'une est faite) et PreviousQuest
+    /// (PreviousQuestJoin 1 = toutes requises, 2 = une seule suffit).
+    /// </summary>
+    public Dictionary<uint, QuestRequirement> Requirements { get; } = [];
+
     private static readonly Regex Parenthesis = new(@"\s*[\(（][^\)）]*[\)）]", RegexOptions.Compiled);
 
     public static string TrimSectionName(string name) => Parenthesis.Replace(name, string.Empty).Trim();
@@ -143,6 +155,14 @@ public sealed class QuestCatalog
         HashSet<uint> mainScenarioSections = [];
 
         foreach (var q in quests) {
+            uint[] locks    = q.QuestLock.Select(l => l.RowId).Where(id => id != 0).ToArray();
+            uint[] previous = q.PreviousQuest.Select(p => p.RowId).Where(id => id != 0).ToArray();
+            if (locks.Length > 0 || previous.Length > 0) {
+                catalog.Requirements[q.RowId] = new QuestRequirement(locks, previous, q.PreviousQuestJoin == 2);
+            }
+        }
+
+        foreach (var q in quests) {
             if (q.Name.IsEmpty || q.JournalGenre.RowId == 0 || q.Festival.RowId != 0) continue;
 
             var genre = q.JournalGenre.ValueNullable;
@@ -188,7 +208,6 @@ public sealed class QuestCatalog
                 q.SortKey,
                 q.Expansion.RowId,
                 q.GrandCompany.RowId,
-                q.QuestLock.Select(l => l.RowId).Where(id => id != 0).ToArray(),
                 city,
                 ids.Any(QuestLists.Retired.Contains),
                 npcId,

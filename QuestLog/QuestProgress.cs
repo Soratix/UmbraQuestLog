@@ -27,7 +27,9 @@ public sealed record SectionProgress(QuestSection Section, int Done, int Total, 
 ///  1. quête retirée du jeu et pas faite ;
 ///  2. quête réservée à une autre cité de départ (faite ou non : elle ne peut pas l'être) ;
 ///  3. quête de classe prévue pour ceux qui prennent la classe plus tard, quand c'est la classe de départ ;
-///  4. QuestLock : verrouillée par une quête déjà faite (choix exclusifs, Grande Compagnie choisie…) ;
+///  4. impossible : verrouillée (QuestLock) par une quête déjà faite (choix exclusifs, Grande Compagnie choisie…),
+///     ou dont le prérequis (PreviousQuest) est lui-même impossible, de proche en proche
+///     (par exemple la suite de l'enrôlement d'une autre Grande Compagnie) ;
 ///  5. Quest.GrandCompany différente de la Grande Compagnie actuelle (ou pas encore de Grande Compagnie) ;
 ///  6. option : extension pas encore atteinte dans le scénario principal.
 /// </summary>
@@ -70,7 +72,8 @@ public sealed class QuestProgress
             return r;
         }
 
-        var progress = new QuestProgress();
+        var impossible = new Impossibility(catalog.Requirements, isComplete);
+        var progress   = new QuestProgress();
 
         foreach (var section in catalog.Sections) {
             List<CategoryProgress> categories = [];
@@ -86,7 +89,7 @@ public sealed class QuestProgress
                     if (!complete) {
                         if (q.Retired) continue;
                         if (q.Ids.Any(startClassExcluded.Contains)) continue;
-                        if (q.Locks.Any(isComplete)) continue;
+                        if (q.Ids.All(impossible.Check)) continue;
                         if (q.GrandCompany != 0 && q.GrandCompany != player.GrandCompany) continue;
                         if (player.HideLocked && !ExpansionReached(q.Expansion)) continue;
                     }
@@ -115,5 +118,58 @@ public sealed class QuestProgress
         }
 
         return progress;
+    }
+
+    /// <summary>
+    /// Quête devenue impossible : pas faite, et verrouillée par une quête faite, ou dont les prérequis
+    /// sont impossibles (tous s'il en suffit d'un, un seul s'ils sont tous requis).
+    /// Parcours itératif mémorisé : les chaînes du scénario dépassent le millier de quêtes.
+    /// </summary>
+    private sealed class Impossibility(Dictionary<uint, QuestRequirement> requirements, Func<uint, bool> isComplete)
+    {
+        private readonly Dictionary<uint, bool> _memo = [];
+
+        public bool Check(uint id)
+        {
+            if (_memo.TryGetValue(id, out bool known)) return known;
+
+            HashSet<uint>             visiting = [];
+            Stack<(uint Id, bool Ready)> stack = new();
+            stack.Push((id, false));
+
+            while (stack.Count > 0) {
+                var (current, ready) = stack.Pop();
+                if (_memo.ContainsKey(current)) continue;
+
+                if (!ready) {
+                    if (isComplete(current) || !requirements.TryGetValue(current, out var req)) {
+                        _memo[current] = false;
+                        continue;
+                    }
+
+                    if (req.Locks.Any(isComplete)) {
+                        _memo[current] = true;
+                        continue;
+                    }
+
+                    if (req.Previous.Length == 0 || !visiting.Add(current)) {
+                        _memo[current] = false; // pas de prérequis, ou boucle dans les données
+                        continue;
+                    }
+
+                    stack.Push((current, true));
+                    foreach (uint prev in req.Previous) {
+                        if (!_memo.ContainsKey(prev) && !visiting.Contains(prev)) stack.Push((prev, false));
+                    }
+                    continue;
+                }
+
+                var r = requirements[current];
+                bool Impossible(uint p) => _memo.TryGetValue(p, out bool v) && v;
+                _memo[current] = r.AnyPrevious ? r.Previous.All(Impossible) : r.Previous.Any(Impossible);
+            }
+
+            return _memo[id];
+        }
     }
 }

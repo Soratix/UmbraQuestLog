@@ -257,7 +257,9 @@ public sealed class QuestLogPopup : WidgetPopup
         }),
         new(".ql-title", Text(0, Anchor.MiddleLeft, 14)),
         new(".ql-title-value", Muted(0, Anchor.MiddleLeft)),
+        // Même ancrage que le titre : Una.Drawing ne fait se suivre que les nœuds de même ancre.
         new(".ql-back", new() {
+            Anchor       = Anchor.MiddleLeft,
             Padding      = new(2, 8),
             BorderRadius = 4,
             FontSize     = 12,
